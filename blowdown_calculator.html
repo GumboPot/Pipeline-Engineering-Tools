@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Blowdown Calc">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d1210">
+<title>Gas Blowdown Time &amp; Cost Calculator</title>
+<style>
+  :root{
+    --bg: #0d1210;
+    --panel: #131a17;
+    --panel-2: #182420;
+    --line: #2a3833;
+    --line-soft: #202b27;
+    --amber: #f2a33d;
+    --amber-dim: #7a5a25;
+    --steel: #5fb3c9;
+    --steel-dim: #294a52;
+    --text: #eef2ef;
+    --text-dim: #93a29b;
+    --text-faint: #5c6b64;
+    --danger: #e0645a;
+    --mono: 'IBM Plex Mono', 'SF Mono', ui-monospace, monospace;
+    --sans: 'IBM Plex Sans', -apple-system, 'Helvetica Neue', sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{
+    margin:0; padding:0; background:var(--bg); color:var(--text);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  body{
+    padding: calc(env(safe-area-inset-top) + 14px) 16px calc(env(safe-area-inset-bottom) + 40px);
+    min-height: 100vh;
+    background-image:
+      linear-gradient(var(--line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+    background-size: 28px 28px;
+    background-attachment: fixed;
+  }
+  .wrap{ max-width: 460px; margin: 0 auto; }
+
+  header{ padding: 4px 2px 18px; }
+  .eyebrow{
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+    color: var(--amber); text-transform: uppercase; display:flex; align-items:center; gap:8px;
+  }
+  .eyebrow::before{ content:''; width:6px; height:6px; background:var(--amber); border-radius:50%; box-shadow:0 0 6px var(--amber); flex-shrink:0; }
+  h1{ font-size: 21px; font-weight:600; margin: 6px 0 2px; letter-spacing:-0.01em; }
+  .subtitle{ font-size: 13px; color: var(--text-dim); font-family: var(--mono); }
+
+  .proj-input{
+    width:100%; background:transparent; border:none; border-bottom:1px dashed var(--line);
+    color:var(--text); font-size:13px; font-family:var(--mono); padding:8px 0; margin-top:10px;
+    outline:none;
+  }
+  .proj-input::placeholder{ color: var(--text-faint); }
+  .proj-input:focus{ border-bottom-color: var(--amber); }
+
+  .card{
+    background: linear-gradient(180deg, var(--panel-2), var(--panel));
+    border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px 16px 14px; margin-bottom: 14px;
+    position: relative;
+  }
+  .card-head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 12px; padding-bottom:10px; border-bottom: 1px solid var(--line-soft);
+  }
+  .card-title{
+    font-size: 12px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color: var(--text-dim);
+    display:flex; align-items:center; gap:8px;
+  }
+  .card-title .tag{
+    font-family: var(--mono); font-size: 10px; color: var(--text-faint); border:1px solid var(--line);
+    border-radius: 4px; padding: 1px 6px;
+  }
+
+  .field{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 9px 0; border-bottom: 1px solid var(--line-soft);
+    gap: 12px;
+  }
+  .field:last-child{ border-bottom:none; }
+  .field label{ font-size: 13.5px; color: var(--text); flex: 1 1 auto; }
+  .field .hint{ display:block; font-size: 10.5px; color: var(--text-faint); font-family: var(--mono); margin-top:1px; }
+  .field-input{
+    display:flex; align-items:center; gap:6px; flex-shrink:0;
+  }
+  input[type="number"], select{
+    background: rgba(242,163,61,0.06);
+    border: 1px solid var(--amber-dim);
+    color: var(--amber);
+    font-family: var(--mono); font-size: 14.5px; font-weight:600;
+    border-radius: 6px; padding: 7px 8px; width: 92px; text-align:right;
+    outline:none; -webkit-appearance:none; appearance:none;
+  }
+  select{ width:auto; max-width:150px; text-align:left; -webkit-appearance:menulist; }
+  input[type="number"]:focus, select:focus{ border-color: var(--amber); box-shadow: 0 0 0 2px rgba(242,163,61,0.15); }
+  .unit{ font-family: var(--mono); font-size: 11.5px; color: var(--text-faint); min-width: 34px; }
+
+  .result-card{
+    background: linear-gradient(180deg, #101d22, #0c1618);
+    border: 1px solid var(--steel-dim); border-radius: 10px;
+    padding: 16px; margin-bottom: 14px;
+  }
+  .result-card .card-title{ color: var(--steel); }
+  .result-row{
+    display:flex; align-items:baseline; justify-content:space-between;
+    padding: 8px 0; border-bottom: 1px dashed var(--line-soft);
+  }
+  .result-row:last-child{ border-bottom:none; }
+  .result-label{ font-size: 13px; color: var(--text-dim); }
+  .result-value{ font-family: var(--mono); font-size: 19px; font-weight:600; color: var(--steel); }
+  .result-value .unit-small{ font-size:12px; color:var(--text-faint); margin-left:4px; font-weight:400; }
+  .result-value.warn{ color: var(--danger); }
+
+  .stack-viz{ display:flex; align-items:center; gap:14px; margin-bottom: 4px; }
+  .gauge{ position:relative; width:88px; height:88px; flex-shrink:0; }
+  .gauge svg{ width:100%; height:100%; transform:rotate(-90deg); }
+  .gauge-track{ fill:none; stroke:var(--line); stroke-width:8; }
+  .gauge-fill{ fill:none; stroke:var(--steel); stroke-width:8; stroke-linecap:round; transition: stroke-dashoffset 0.4s ease; }
+  .gauge-center{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  .gauge-center .n{ font-family:var(--mono); font-size:15px; font-weight:700; color:var(--text); }
+  .gauge-center .u{ font-family:var(--mono); font-size:9px; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.05em; }
+  .gauge-desc{ font-size:12.5px; color:var(--text-dim); line-height:1.5; }
+  .gauge-desc b{ color:var(--text); font-weight:600; }
+
+  .flow-diagram{ margin: 2px 0 14px; }
+  .flow-diagram svg{ width:100%; height:auto; display:block; }
+
+  footer{
+    text-align:center; font-family: var(--mono); font-size: 10.5px; color: var(--text-faint);
+    padding: 20px 10px 4px; line-height:1.7;
+  }
+  footer .src{ color: var(--text-dim); }
+
+  .install-note{
+    display:flex; gap:10px; align-items:flex-start;
+    background: rgba(242,163,61,0.05); border:1px solid var(--amber-dim);
+    border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;
+    font-size: 12.5px; color: var(--text-dim); line-height:1.55;
+  }
+  .install-note .icon{ font-size:16px; flex-shrink:0; margin-top:1px; }
+  .install-note b{ color: var(--amber); }
+  .install-note.hidden{ display:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Pipeline blowdown analysis</div>
+    <h1>Gas blowdown time &amp; cost</h1>
+    <div class="subtitle">Based on Petroleum Institute for Continuing Education, Pipeline Design &amp; Construction</div>
+    <input class="proj-input" id="projectTitle" type="text" placeholder="Project title (e.g. Blowdown from MO 908 to MS 73)">
+  </header>
+
+  <div class="install-note" id="installNote">
+    <span class="icon">&#9634;</span>
+    <div>Add this to your Home Screen: tap the <b>Share</b> icon in Safari, then <b>Add to Home Screen</b>. It'll open full-screen like a native app, and it works offline once saved.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">Pipeline parameters</div>
+    </div>
+    <div class="field">
+      <label>Initial pressure, P1</label>
+      <div class="field-input"><input type="number" id="p1" value="800" step="1"><span class="unit">psig</span></div>
+    </div>
+    <div class="field">
+      <label>Pipe OD</label>
+      <div class="field-input"><input type="number" id="pipeOD" value="12.75" step="0.01"><span class="unit">in</span></div>
+    </div>
+    <div class="field">
+      <label>Wall thickness</label>
+      <div class="field-input"><input type="number" id="pipeWT" value="0.375" step="0.001"><span class="unit">in</span></div>
+    </div>
+    <div class="field">
+      <label>Length of pipeline</label>
+      <div class="field-input"><input type="number" id="lengthMiles" value="43" step="0.1"><span class="unit">mi</span></div>
+    </div>
+    <div class="field">
+      <label>Pipe ID <span class="hint">= OD &minus; 2 &times; WT</span></label>
+      <div class="field-input"><span class="result-value" id="pipeID" style="font-size:14.5px;">&mdash;</span><span class="unit">in</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-title">Gas parameter</div></div>
+    <div class="field">
+      <label>Specific gravity</label>
+      <div class="field-input"><input type="number" id="sg" value="0.62" step="0.01"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-title">Blowdown stack</div></div>
+    <div class="field">
+      <label>Stack OD</label>
+      <div class="field-input"><input type="number" id="stackOD" value="2.5" step="0.01"><span class="unit">in</span></div>
+    </div>
+    <div class="field">
+      <label>Stack wall thickness</label>
+      <div class="field-input"><input type="number" id="stackWT" value="0.154" step="0.001"><span class="unit">in</span></div>
+    </div>
+    <div class="field">
+      <label>Stack ID <span class="hint">= OD &minus; 2 &times; WT</span></label>
+      <div class="field-input"><span class="result-value" id="stackID" style="font-size:14.5px;">&mdash;</span><span class="unit">in</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-title">Blowdown valve</div></div>
+    <div class="field">
+      <label>Choke factor</label>
+      <div class="field-input">
+        <select id="chokePreset">
+          <option value="custom">Custom</option>
+          <option value="1">1.0 &ndash; Ideal nozzle</option>
+          <option value="1.6" selected>1.6 &ndash; Full-port gate valve</option>
+          <option value="1.8">1.8 &ndash; Reduced-port gate valve</option>
+          <option value="2">2.0 &ndash; Regular plug valve</option>
+          <option value="3.2">3.2 &ndash; Venturi plug valve</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Value used</label>
+      <div class="field-input"><input type="number" id="choke" value="1.6" step="0.1"></div>
+    </div>
+  </div>
+
+  <div class="result-card">
+    <div class="card-head"><div class="card-title">Blowdown time</div></div>
+    <div class="stack-viz">
+      <div class="gauge">
+        <svg viewBox="0 0 100 100">
+          <circle class="gauge-track" cx="50" cy="50" r="42"></circle>
+          <circle class="gauge-fill" id="gaugeFill" cx="50" cy="50" r="42" stroke-dasharray="264" stroke-dashoffset="264"></circle>
+        </svg>
+        <div class="gauge-center">
+          <span class="n" id="gaugeHours">&mdash;</span>
+          <span class="u">hours</span>
+        </div>
+      </div>
+      <div class="gauge-desc">Time to vent the pipeline segment down to atmospheric through the blowdown stack at the given choke factor.</div>
+    </div>
+    <div class="result-row">
+      <span class="result-label">Blowdown time</span>
+      <span class="result-value" id="timeMin">&mdash;<span class="unit-small">min</span></span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">Blowdown time</span>
+      <span class="result-value" id="timeHr">&mdash;<span class="unit-small">hr</span></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-title">Volume &amp; cost inputs</div></div>
+    <div class="field">
+      <label>Final pressure, P2</label>
+      <div class="field-input"><input type="number" id="p2" value="0" step="1"><span class="unit">psig</span></div>
+    </div>
+    <div class="field">
+      <label>Cost per Mcf</label>
+      <div class="field-input"><input type="number" id="costPerMcf" value="10.50" step="0.01"><span class="unit">$</span></div>
+    </div>
+  </div>
+
+  <div class="result-card">
+    <div class="card-head"><div class="card-title">Volume &amp; cost result</div></div>
+    <div class="result-row">
+      <span class="result-label">Gas loss</span>
+      <span class="result-value" id="gasLoss">&mdash;<span class="unit-small">Mcf</span></span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">Weight of gas</span>
+      <span class="result-value" id="gasLbs">&mdash;<span class="unit-small">lbs</span></span>
+    </div>
+    <div class="result-row">
+      <span class="result-label">Cost of blowdown</span>
+      <span class="result-value" id="gasCost">&mdash;<span class="unit-small">$</span></span>
+    </div>
+  </div>
+
+  <footer>
+    <div class="src">Source: Petroleum Institute for Continuing Education &mdash; Pipeline Design and Construction</div>
+    <div>Originally developed by Ryan Almerico, P.E. &middot; 12/10/2003</div>
+  </footer>
+
+</div>
+
+<script>
+function num(id){ return parseFloat(document.getElementById(id).value) || 0; }
+function fmt(v, d){ if(!isFinite(v)) return '0'; return v.toLocaleString('en-US', {minimumFractionDigits:d, maximumFractionDigits:d}); }
+
+function recalc(){
+  var p1 = num('p1');
+  var pipeOD = num('pipeOD');
+  var pipeWT = num('pipeWT');
+  var lengthMiles = num('lengthMiles');
+  var sg = num('sg');
+  var stackOD = num('stackOD');
+  var stackWT = num('stackWT');
+  var choke = num('choke');
+  var p2 = num('p2');
+  var costPerMcf = num('costPerMcf');
+
+  var pipeID = pipeOD - pipeWT * 2;
+  var stackID = stackOD - 2 * stackWT;
+
+  document.getElementById('pipeID').textContent = fmt(pipeID, 3);
+  document.getElementById('stackID').textContent = fmt(stackID, 3);
+
+  var timeMin = 0, timeHr = 0;
+  if (stackID > 0 && p1 > 0) {
+    timeMin = (0.0588 * Math.pow(p1, 1/3) * Math.pow(sg, 0.5) * Math.pow(pipeID, 2) * lengthMiles * choke) / Math.pow(stackID, 2);
+    timeHr = timeMin / 60;
+  }
+  document.getElementById('timeMin').innerHTML = fmt(timeMin, 1) + '<span class="unit-small">min</span>';
+  document.getElementById('timeHr').innerHTML = fmt(timeHr, 2) + '<span class="unit-small">hr</span>';
+  document.getElementById('gaugeHours').textContent = fmt(timeHr, 1);
+
+  var pct = Math.min(timeHr / 24, 1);
+  var circumference = 264;
+  var offset = circumference * (1 - pct);
+  document.getElementById('gaugeFill').style.strokeDashoffset = offset;
+
+  var areaFt2 = (Math.pow(pipeID, 2) / 4) * 3.14159 / 144;
+  var volumeCf = lengthMiles > 0 ? areaFt2 * lengthMiles * 5280 : 0;
+  var pressureFactor = p2 > 0 ? (p1 - p2) / 14.7 : (p1 + 14.7) / 14.7;
+  var gasLossCf = volumeCf > 0 ? pressureFactor * volumeCf : 0;
+  var gasLossMcf = gasLossCf / 1000;
+  var gasLbs = gasLossMcf / 2.1 * 100;
+  var gasCost = gasLossMcf * costPerMcf;
+
+  document.getElementById('gasLoss').innerHTML = fmt(gasLossMcf, 1) + '<span class="unit-small">Mcf</span>';
+  document.getElementById('gasLbs').innerHTML = fmt(gasLbs, 0) + '<span class="unit-small">lbs</span>';
+  document.getElementById('gasCost').innerHTML = '$' + fmt(gasCost, 2);
+}
+
+document.getElementById('chokePreset').addEventListener('change', function(){
+  if (this.value !== 'custom') document.getElementById('choke').value = this.value;
+  recalc();
+});
+document.getElementById('choke').addEventListener('input', function(){
+  document.getElementById('chokePreset').value = 'custom';
+  recalc();
+});
+
+var inputs = ['p1','pipeOD','pipeWT','lengthMiles','sg','stackOD','stackWT','p2','costPerMcf'];
+inputs.forEach(function(id){
+  document.getElementById(id).addEventListener('input', recalc);
+});
+
+if (window.navigator.standalone) {
+  document.getElementById('installNote').classList.add('hidden');
+}
+
+recalc();
+</script>
+</body>
+</html>
