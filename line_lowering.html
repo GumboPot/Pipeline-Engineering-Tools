@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Line Lowering">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d1210">
+<title>Line Lowering / Sag Bend Calculator</title>
+<style>
+  :root{
+    --bg:#0d1210; --panel:#131a17; --panel-2:#182420; --line:#2a3833; --line-soft:#202b27;
+    --amber:#f2a33d; --amber-dim:#7a5a25; --steel:#5fb3c9; --steel-dim:#294a52;
+    --text:#eef2ef; --text-dim:#93a29b; --text-faint:#5c6b64; --danger:#e0645a;
+    --mono:'IBM Plex Mono','SF Mono',ui-monospace,monospace; --sans:'IBM Plex Sans',-apple-system,'Helvetica Neue',sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased;}
+  body{
+    padding: calc(env(safe-area-inset-top) + 14px) 16px calc(env(safe-area-inset-bottom) + 40px);
+    min-height:100vh;
+    background-image: linear-gradient(var(--line-soft) 1px, transparent 1px), linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+    background-size:28px 28px; background-attachment:fixed;
+  }
+  .wrap{max-width:460px;margin:0 auto;}
+  header{padding:4px 2px 18px;}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--amber);text-transform:uppercase;display:flex;align-items:center;gap:8px;}
+  .eyebrow::before{content:'';width:6px;height:6px;background:var(--amber);border-radius:50%;box-shadow:0 0 6px var(--amber);flex-shrink:0;}
+  h1{font-size:21px;font-weight:600;margin:6px 0 2px;letter-spacing:-.01em;}
+  .subtitle{font-size:13px;color:var(--text-dim);font-family:var(--mono);}
+  .proj-input{width:100%;background:transparent;border:none;border-bottom:1px dashed var(--line);color:var(--text);font-size:13px;font-family:var(--mono);padding:8px 0;margin-top:10px;outline:none;}
+  .proj-input::placeholder{color:var(--text-faint);}
+  .proj-input:focus{border-bottom-color:var(--amber);}
+  .card{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:10px;padding:16px 16px 14px;margin-bottom:14px;position:relative;}
+  .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--line-soft);}
+  .card-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);}
+  .field{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line-soft);gap:12px;}
+  .field:last-child{border-bottom:none;}
+  .field label{font-size:13.5px;color:var(--text);flex:1 1 auto;}
+  .field-input{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+  input[type="number"]{
+    background:rgba(242,163,61,0.06); border:1px solid var(--amber-dim); color:var(--amber);
+    font-family:var(--mono); font-size:14.5px; font-weight:600; border-radius:6px; padding:7px 8px;
+    width:100px; text-align:right; outline:none; -webkit-appearance:none;
+  }
+  input[type="number"]:focus{border-color:var(--amber); box-shadow:0 0 0 2px rgba(242,163,61,0.15);}
+  .unit{font-family:var(--mono); font-size:11.5px; color:var(--text-faint); min-width:30px;}
+  .result-card{background:linear-gradient(180deg,#101d22,#0c1618); border:1px solid var(--steel-dim); border-radius:10px; padding:16px; margin-bottom:14px;}
+  .result-card .card-title{color:var(--steel);}
+  .result-row{display:flex;align-items:baseline;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--line-soft);}
+  .result-row:last-child{border-bottom:none;}
+  .result-label{font-size:13px;color:var(--text-dim);}
+  .result-value{font-family:var(--mono);font-size:16.5px;font-weight:600;color:var(--steel);}
+  .hero-result{background:linear-gradient(180deg,#182b14,#0f1a0e); border:1px solid #3d5a2c; border-radius:10px; padding:18px 16px; margin-bottom:14px;}
+  .hero-grid{display:flex; gap:12px;}
+  .hero-cell{flex:1; text-align:center;}
+  .hero-label{font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:#8fbf6f; margin-bottom:6px;}
+  .hero-value{font-family:var(--mono); font-size:26px; font-weight:700; color:#a9e08a;}
+  .hero-unit{font-size:11px; color:var(--text-faint); font-family:var(--mono);}
+  .warn-note{background:rgba(224,100,90,0.08); border:1px solid #5a2e2c; border-radius:8px; padding:10px 12px; font-size:12px; color:#e0958f; margin-bottom:14px;}
+  .chart-wrap{margin-top:6px;}
+  .chart-wrap svg{width:100%; height:auto; display:block;}
+  .table-scroll{overflow-x:auto; margin-top:10px; -webkit-overflow-scrolling:touch;}
+  table.profile{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:12px;}
+  table.profile th{text-align:right; color:var(--text-faint); font-weight:600; padding:6px 8px; border-bottom:1px solid var(--line);}
+  table.profile th:first-child, table.profile td:first-child{text-align:left;}
+  table.profile td{text-align:right; padding:5px 8px; border-bottom:1px solid var(--line-soft); color:var(--text);}
+  footer{text-align:center; font-family:var(--mono); font-size:10.5px; color:var(--text-faint); padding:20px 10px 4px; line-height:1.7;}
+  .install-note{display:flex;gap:10px;align-items:flex-start;background:rgba(242,163,61,0.05);border:1px solid var(--amber-dim);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12.5px;color:var(--text-dim);line-height:1.55;}
+  .install-note .icon{font-size:16px;flex-shrink:0;margin-top:1px;}
+  .install-note b{color:var(--amber);}
+  .install-note.hidden{display:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Bending stress / lowering</div>
+    <h1>Line lowering calculator</h1>
+    <div class="subtitle">Sag-bend length &amp; support spacing</div>
+    <input class="proj-input" id="projectTitle" type="text" placeholder="Job / project title">
+  </header>
+
+  <div class="install-note" id="installNote">
+    <span class="icon">&#9634;</span>
+    <div>Add to Home Screen: Share icon in Safari &rarr; <b>Add to Home Screen</b>.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-title">Pipeline data</div></div>
+    <div class="field"><label>Outside diameter, D</label><div class="field-input"><input type="number" id="D" value="16" step="0.01"><span class="unit">in</span></div></div>
+    <div class="field"><label>Wall thickness, t</label><div class="field-input"><input type="number" id="t" value="0.5" step="0.001"><span class="unit">in</span></div></div>
+    <div class="field"><label>Max. allowable stress, SMYS</label><div class="field-input"><input type="number" id="SMYS" value="46000" step="100"><span class="unit">psi</span></div></div>
+    <div class="field"><label>Modulus of elasticity, E</label><div class="field-input"><input type="number" id="E" value="29000000" step="10000"><span class="unit">psi</span></div></div>
+    <div class="field"><label>Max. operating pressure, P</label><div class="field-input"><input type="number" id="P" value="1270" step="1"><span class="unit">psig</span></div></div>
+    <div class="field"><label>Installation temp, T1</label><div class="field-input"><input type="number" id="T1" value="100" step="1"><span class="unit">&deg;F</span></div></div>
+    <div class="field"><label>Operating temp, T2</label><div class="field-input"><input type="number" id="T2" value="75" step="1"><span class="unit">&deg;F</span></div></div>
+    <div class="field"><label>Poisson's ratio, &mu;</label><div class="field-input"><input type="number" id="u" value="0.3" step="0.01"></div></div>
+    <div class="field"><label>Thermal exp. coef., &alpha;</label><div class="field-input"><input type="number" id="a" value="0.0000065" step="0.0000001"><span class="unit">in/in/&deg;F</span></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-title">Lowering parameters</div></div>
+    <div class="field"><label>Required mid-span offset, &Delta;</label><div class="field-input"><input type="number" id="Delta" value="7" step="0.1"><span class="unit">ft</span></div></div>
+    <div class="field"><label>Design factor, Fd</label><div class="field-input"><input type="number" id="Fd" value="0.54" step="0.01"></div></div>
+  </div>
+
+  <div class="warn-note" id="warnNote" style="display:none;">
+    The available stress (Fd&times;SMYS &minus; Se) is zero or negative with these inputs &mdash; the pipe can't safely be lowered by this offset without exceeding allowable stress. Increase the design factor allowance, reduce the offset, or check operating conditions.
+  </div>
+
+  <div class="hero-result">
+    <div class="hero-grid">
+      <div class="hero-cell">
+        <div class="hero-label">Trench length, L</div>
+        <div class="hero-value" id="outL">&mdash;</div>
+        <div class="hero-unit">feet</div>
+      </div>
+      <div class="hero-cell">
+        <div class="hero-label">Max. support spacing</div>
+        <div class="hero-value" id="outLs">&mdash;</div>
+        <div class="hero-unit">feet</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="result-card">
+    <div class="card-head"><div class="card-title">Stress calculation detail</div></div>
+    <div class="result-row"><span class="result-label">Inside diameter, id</span><span class="result-value" id="outId">&mdash;</span></div>
+    <div class="result-row"><span class="result-label">Longitudinal stress from pressure, Sp</span><span class="result-value" id="outSp">&mdash;</span></div>
+    <div class="result-row"><span class="result-label">Longitudinal stress from temp., St</span><span class="result-value" id="outSt">&mdash;</span></div>
+    <div class="result-row"><span class="result-label">Existing longitudinal stress, Se</span><span class="result-value" id="outSe">&mdash;</span></div>
+    <div class="result-row"><span class="result-label">Stress from elongation, Ss</span><span class="result-value" id="outSs">&mdash;</span></div>
+    <div class="result-row"><span class="result-label">Available bending stress, Sa</span><span class="result-value" id="outSa">&mdash;</span></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-title">Trench profile</div></div>
+    <div class="chart-wrap" id="chartWrap"></div>
+    <div class="table-scroll">
+      <table class="profile" id="profileTable">
+        <thead><tr><th>Station (ft)</th><th>Offset (in)</th></tr></thead>
+        <tbody id="profileBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    <div>Sag-bend geometry per standard pipeline lowering practice</div>
+    <div>Originally developed by Ryan Almerico, P.E.</div>
+  </footer>
+
+</div>
+
+<script>
+function num(id){ return parseFloat(document.getElementById(id).value) || 0; }
+function fmt(v, d){ if(!isFinite(v)) return '\u2014'; return v.toLocaleString('en-US', {minimumFractionDigits:d, maximumFractionDigits:d}); }
+
+function recalc(){
+  const D = num('D'), t = num('t'), SMYS = num('SMYS'), E = num('E'), P = num('P');
+  const T1 = num('T1'), T2 = num('T2'), u = num('u'), a = num('a');
+  const Delta = num('Delta'), Fd = num('Fd');
+
+  const id = D - 2*t;
+  const Sp = P*D*u/(2*t);
+  const St = E*a*(T1 - T2);
+  const Se = Sp + St;
+
+  const availStress = Fd*SMYS - Se;
+  const warn = availStress <= 0;
+  document.getElementById('warnNote').style.display = warn ? 'block' : 'none';
+
+  if (warn){
+    ['outId','outSp','outSt','outSe','outSs','outSa','outL','outLs'].forEach(id2 => document.getElementById(id2).textContent = '\u2014');
+    document.getElementById('profileBody').innerHTML = '';
+    document.getElementById('chartWrap').innerHTML = '';
+    return;
+  }
+
+  const L = Math.sqrt((3.87e7*Delta*D + 7.74e7*Delta*Delta) / availStress);
+  const Ss = 2.67*E*Math.pow(Delta/L, 2);
+  const Sa = Fd*SMYS - Se - Ss;
+
+  let Ls = NaN;
+  if (Sa > 0){
+    const numerVal = 0.0286*Sa*(Math.pow(D,4) - Math.pow(id,4));
+    const denomVal = Math.pow(D,3) - 0.8724*Math.pow(id,2)*D;
+    Ls = Math.sqrt(numerVal/denomVal);
+  }
+
+  document.getElementById('outId').innerHTML = fmt(id,3) + '<span style="font-size:11px;color:var(--text-faint);"> in</span>';
+  document.getElementById('outSp').innerHTML = fmt(Sp,1) + '<span style="font-size:11px;color:var(--text-faint);"> psi</span>';
+  document.getElementById('outSt').innerHTML = fmt(St,1) + '<span style="font-size:11px;color:var(--text-faint);"> psi</span>';
+  document.getElementById('outSe').innerHTML = fmt(Se,1) + '<span style="font-size:11px;color:var(--text-faint);"> psi</span>';
+  document.getElementById('outSs').innerHTML = fmt(Ss,1) + '<span style="font-size:11px;color:var(--text-faint);"> psi</span>';
+  document.getElementById('outSa').innerHTML = fmt(Sa,1) + '<span style="font-size:11px;color:var(--text-faint);"> psi</span>';
+  document.getElementById('outL').textContent = fmt(L,1);
+  document.getElementById('outLs').textContent = isNaN(Ls) ? '\u2014' : fmt(Ls,1);
+
+  buildProfile(L, Delta);
+}
+
+function buildProfile(L, Delta){
+  const points = [];
+  let x = 0;
+  while (true){
+    const offsetFt = -16*x*x*Delta*Math.pow(L-x, 2) / Math.pow(L, 4);
+    points.push({x, offsetIn: offsetFt*12});
+    if (x >= L) break;
+    x = (x + 12.5 < L) ? x + 12.5 : L;
+  }
+
+  const body = document.getElementById('profileBody');
+  body.innerHTML = points.map(p => '<tr><td>' + fmt(p.x,1) + '</td><td>' + fmt(p.offsetIn,2) + '</td></tr>').join('');
+
+  const w = 400, h = 180, padL = 34, padR = 14, padT = 14, padB = 26;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const maxOffset = Math.max(...points.map(p => Math.abs(p.offsetIn)), 0.1);
+  const sx = x => padL + (x / L) * plotW;
+  const sy = o => padT + (Math.abs(o) / maxOffset) * plotH;
+
+  let path = 'M ' + points.map(p => sx(p.x).toFixed(1) + ' ' + sy(p.offsetIn).toFixed(1)).join(' L ');
+  const gridLines = [];
+  for (let i=0;i<=4;i++){
+    const yy = padT + (plotH/4)*i;
+    gridLines.push('<line x1="'+padL+'" y1="'+yy.toFixed(1)+'" x2="'+(w-padR)+'" y2="'+yy.toFixed(1)+'" stroke="#202b27" stroke-width="1"/>');
+  }
+
+  const svg = `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+    ${gridLines.join('')}
+    <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${h-padB}" stroke="#2a3833" stroke-width="1"/>
+    <line x1="${padL}" y1="${h-padB}" x2="${w-padR}" y2="${h-padB}" stroke="#2a3833" stroke-width="1"/>
+    <path d="${path}" fill="none" stroke="#5fb3c9" stroke-width="2"/>
+    <text x="${padL}" y="${h-8}" font-size="9" fill="#5c6b64" font-family="monospace">0</text>
+    <text x="${w-padR}" y="${h-8}" font-size="9" fill="#5c6b64" font-family="monospace" text-anchor="end">${L.toFixed(0)} ft</text>
+    <text x="${padL-6}" y="${padT+8}" font-size="9" fill="#5c6b64" font-family="monospace" text-anchor="end">0</text>
+    <text x="${padL-6}" y="${h-padB}" font-size="9" fill="#5c6b64" font-family="monospace" text-anchor="end">${maxOffset.toFixed(1)}"</text>
+  </svg>`;
+  document.getElementById('chartWrap').innerHTML = svg;
+}
+
+['D','t','SMYS','E','P','T1','T2','u','a','Delta','Fd'].forEach(id => {
+  document.getElementById(id).addEventListener('input', recalc);
+});
+
+if (window.navigator.standalone) document.getElementById('installNote').classList.add('hidden');
+recalc();
+</script>
+</body>
+</html>
